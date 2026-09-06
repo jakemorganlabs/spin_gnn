@@ -1,16 +1,20 @@
-"""Prop 1 (packet invariance). Session 4 adds Prop 3 and the guard test."""
+"""Prop 1 and Prop 3, plus the guard."""
 
 # flow:
 # 1. packet examples pin the column values and the width formula.
 # 2. properties prove Prop 1 for the edge packet and the self packet.
 # 3. the swap property pins the column behavior exactly.
+# 4. the model-level Prop 3 invariant-outputs property and the guard live here:
+#    the guard shows that leaking box coordinates into h breaks the invariant.
 
 import torch
 from hypothesis import given
 from hypothesis import strategies as st
+from torch import Tensor
 
 from spin_gnn.constants import MARGIN, R_INTERIOR, SEED
 from spin_gnn.constellation import rotate_about_controller
+from spin_gnn.geometry.box import box_coords
 from spin_gnn.geometry.frames import random_rotation
 from spin_gnn.geometry.invariants import (
     PacketColumn,
@@ -19,7 +23,10 @@ from spin_gnn.geometry.invariants import (
     self_packet,
     size_pair,
 )
+from spin_gnn.model.config import SpinGnnConfig
+from spin_gnn.model.spin_gnn_gnn import build_model
 from spin_gnn.tests.test_constellation import make_constellation
+from spin_gnn.types import Constellation
 
 
 def test_packet_width_counts_scalar_blocks() -> None:
@@ -154,3 +161,70 @@ def test_edge_packet_swap_contract(seed_offset: int) -> None:
         assert bool(
             (swapped[..., column] - packet[..., column]).abs().max() <= 1e-12
         ), f"column {column.name} must be swap-symmetric"
+
+
+# session 4: Prop 3 at model level, and the guard that shows where it breaks.
+
+
+def _small_config() -> SpinGnnConfig:
+    return SpinGnnConfig(n=8, d=16, c=4, d_c=32, d_m=16, n_layers=2)
+
+
+@given(st.integers(min_value=1, max_value=3))
+def test_model_invariant_outputs_under_haar(seed_offset: int) -> None:
+    # Prop 3: h_c, y, and z are invariant under Haar rotations on the interior.
+    config = _small_config()
+    model = build_model(config).double()
+    gen = torch.Generator().manual_seed(SEED + 553 + seed_offset)
+    c = make_constellation(2, config.n, config.d, config.c, gen, interior=True)
+    rotation = random_rotation(2, gen)
+    before = model(c)
+    after = model(rotate_about_controller(c, rotation))
+    for name, tensor_a, tensor_b in (
+        ("h_c", before.constellation.h_c, after.constellation.h_c),
+        ("y", before.y, after.y),
+        ("z", before.z, after.z),
+    ):
+        gap = (tensor_a - tensor_b).abs()
+        assert bool((gap <= 1e-8).all()), f"{name} moved by {float(gap.max())}"
+
+
+def _inject_box_coords(
+    model: torch.nn.Module, c: Constellation, leak: torch.nn.Linear
+) -> Tensor:
+    # step 1: encode, then leak box coordinates into h before the layers run.
+    state = model.encoder(c)  # type: ignore[attr-defined]
+    leaked = Constellation(
+        x=state.x,
+        s=state.s,
+        u=state.u,
+        phi=state.phi,
+        omega=state.omega,
+        h=state.h + leak(box_coords(state.x)),
+        v=state.v,
+        x_c=state.x_c,
+        h_c=state.h_c,
+    )
+    # step 2: run the layers on the leaked state and return the final h_c.
+    for layer in model.layers:  # type: ignore[attr-defined]
+        leaked = layer(leaked)
+    return leaked.h_c
+
+
+def test_box_coordinate_injection_breaks_invariance(generator: torch.Generator) -> None:
+    # the guard: box_coords does not co-rotate, so leaking it into h through a
+    # fixed Linear must move h_c by more than 1e-3 under a generic rotation.
+    config = _small_config()
+    model = build_model(config).double()
+    torch.manual_seed(0)
+    leak = torch.nn.Linear(6, config.d, dtype=torch.float64)
+    with torch.no_grad():
+        leak.weight.fill_(1.0)
+        leak.bias.fill_(0.0)
+    c = make_constellation(2, config.n, config.d, config.c, generator, interior=True)
+    rotation = random_rotation(2, generator)
+    h_c_before = _inject_box_coords(model, c, leak)
+    h_c_after = _inject_box_coords(model, rotate_about_controller(c, rotation), leak)
+    gap = (h_c_before - h_c_after).abs().max().detach()
+    print(f"\nguard gap: {float(gap)}")
+    assert float(gap) > 1e-3

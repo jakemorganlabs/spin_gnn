@@ -48,7 +48,7 @@ Proof. M_ij is a sum of four terms. Each term is a basis 3-vector that
 transforms by R (V_j, r_hat_ij, u_j, L_j = s_j omega_j u_j) multiplied by
 a gate that is a function of e_ij. The gates are invariant by Prop 1. So
 each term transforms by R, and the sum does too.
-Test: `spin_gnn/tests/test_message.py` (session 3). Status: pending.
+Test: `spin_gnn/tests/test_message.py::test_message_equivariance`. Status: verified.
 
 ## 4. Prop 3: layer equivariance on U
 
@@ -63,8 +63,9 @@ is bounded by the near-zero init INIT_SMALL and the 1/(d + 1) factor.
 Projections never fire while satellites stay off the walls, so the layer
 is a composition of maps that each commute with rho_R. The bound is
 measured by `diagnostics.measure_max_step`, not assumed.
-Test: `spin_gnn/tests/test_invariance.py` and
-`spin_gnn/tests/test_equivariance.py` (session 4). Status: pending.
+Test: `spin_gnn/tests/test_invariance.py::test_model_invariant_outputs_under_haar`
+and `spin_gnn/tests/test_equivariance.py::test_model_equivariant_fields_on_interior`.
+Status: verified.
 
 ## 5. Prop 4: what the box breaks
 
@@ -75,9 +76,8 @@ is O_h (48 elements), or O (24 elements) without reflections.
 Consequence. The model is exactly O-equivariant everywhere,
 approximately SO(3)-equivariant on U, and not equivariant for generic
 rotations of clouds that touch a wall.
-Test: `spin_gnn/tests/test_equivariance.py::test_octahedral_exact` and
-`spin_gnn/tests/test_equivariance.py::test_generic_rotation_breaks`
-(session 4). Status: pending.
+Test: `spin_gnn/tests/test_equivariance.py::test_octahedral_exact_on_wall_touching_batch`
+and `spin_gnn/tests/test_equivariance.py::test_generic_breaks`. Status: verified.
 
 ## 6. Prop 5: phi is a scalar in v0
 
@@ -103,8 +103,7 @@ Test: none. The reflection group is out of scope for v0.
 
 Statement. With omega fixed, L steps of the phase update give
 `phi_L = wrap(phi_0 + L DT omega)`. No integration error accumulates.
-Test: `spin_gnn/tests/test_phase_wrap.py::test_closed_form` (session 4).
-Status: pending.
+Test: `spin_gnn/tests/test_phase_wrap.py::test_closed_form`. Status: verified.
 
 ## 9. Prop 8: expressivity lower bound
 
@@ -119,8 +118,8 @@ with N = 6, the angle columns of the packet differ between the two sets,
 so the scalar path separates them exactly, in integers. The 3D homometric
 constructions of Pozdnyakov et al. would also serve; the line pair is
 chosen because it needs no numeric search.
-Test: `spin_gnn/tests/test_expressivity.py` (session 4).
-Status: pending. This is a lower bound, not a characterization.
+Test: `spin_gnn/tests/test_expressivity.py::test_model_separates_the_homometric_pair`.
+Status: verified. This is a lower bound, not a characterization.
 
 ## 10. Complexity
 

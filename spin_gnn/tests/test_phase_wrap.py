@@ -8,7 +8,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from torch.nn import functional as f
 
-from spin_gnn.constants import PI, SIZE_MAX, SIZE_MIN, TWO_PI
+from spin_gnn.constants import DT, OMEGA_MAX, PI, SIZE_MAX, SIZE_MIN, TWO_PI
 from spin_gnn.geometry.spin import (
     angle_features,
     angular_momentum,
@@ -16,7 +16,10 @@ from spin_gnn.geometry.spin import (
     softplus_inv,
     wrap_angle,
 )
+from spin_gnn.model.config import SpinGnnConfig
+from spin_gnn.model.spin_gnn_gnn import build_model
 from spin_gnn.tests.conftest import angles
+from spin_gnn.tests.test_constellation import make_constellation
 
 F64 = torch.float64
 
@@ -87,3 +90,20 @@ def test_softplus_inv_round_trip(s: float) -> None:
     s_t = torch.tensor(s, dtype=F64)
     out = f.softplus(softplus_inv(s_t))
     assert torch.allclose(out, s_t, atol=1e-6)
+
+
+def test_closed_form(generator: torch.Generator) -> None:
+    # Prop 7: with update_speed False and the phase residual absent, phi is the
+    # exact constant-speed flow wrap(phi_0 + n_layers DT omega_0).
+    config = SpinGnnConfig().model_copy(update={"update_speed": False, "update_phase": True})
+    model = build_model(config).double()
+    c = make_constellation(2, config.n, config.d, config.c, generator, interior=True)
+    # keep every speed legal so clamp_speed is the identity across the run.
+    omega = c.omega.clamp(0.0, OMEGA_MAX)
+    seed = type(c)(
+        x=c.x, s=c.s, u=c.u, phi=c.phi, omega=omega, h=c.h, v=c.v, x_c=c.x_c, h_c=c.h_c
+    )
+    out = model(seed).constellation
+    expected = wrap_angle(seed.phi + config.n_layers * DT * seed.omega)
+    gap = (out.phi - expected).abs().max()
+    assert bool(gap <= 1e-9), f"phi drifted by {float(gap)}"

@@ -4,9 +4,8 @@ Small SO(3)-equivariant GNN with one controller node and 16 spinning satellites
 in a unit cube. Every symmetry claim is a proposition, proved, and
 property-tested. PyTorch, CPU, under 1M params.
 
-The config, encoder, message layer, node updates, and controller pooling are
-in place. The full README, with the claims ledger and the measured numbers, is
-written in session 7.
+The model, readout, predicates, and diagnostics are in place. The full README,
+with the claims ledger and the measured numbers, is written in session 7.
 
 ## Status
 
@@ -25,6 +24,16 @@ property-tested under Haar rotations, along with per-update equivariance, the
 identical-tensor flag rule, and the position step bound at init. Claims C2 and
 the session-3 half of C3 advance; C4 through C11 remain pending.
 
+Session 4 build: `SpinGnnLayer` composes message pass, satellite update,
+controller pool, and controller update; `SpinGnn` stacks `n_layers` of them
+with no weight sharing and reads out through a continuous and a discrete head.
+The predicate set returns booleans and counts under `no_grad`. Prop 3 invariance
+and equivariance hold on the interior; Prop 4 is exact for all 24 cube
+rotations everywhere and fails for a generic rotation at the walls, which is
+the negative test. Prop 7 closes the phase integrator in closed form, and Prop
+8 separates the Boutin-Kemper homometric pair. Claims C2 through C5, C7, and C8
+are verified; C9 through C11 await training in sessions 5 and 6.
+
 ## Verify
 
 ```bash
@@ -41,6 +50,9 @@ ruff check spin_gnn
   validation outcomes.
 - `spin_gnn/constellation.py` validates, rotates, and measures constellations.
 - `spin_gnn/geometry/` holds the box, frame, spin, and invariant primitives.
+- `spin_gnn/model/` holds the config, the readout heads, the predicates, the
+  stacked model, and the diagnostics.
+- `spin_gnn/data/` holds the constructed degenerate pairs.
 - `spin_gnn/tests/` holds the example and property tests.
 - `docs/SPEC.md` is the layer spec. `docs/MATH.md` holds the propositions and
   proofs. `docs/CLAIMS.md` is the claims ledger.
