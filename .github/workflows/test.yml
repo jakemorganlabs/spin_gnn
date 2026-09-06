@@ -1,0 +1,28 @@
+# ci gate: every push and pull request runs the same three local checks.
+# flow:
+# 1. check out the tree on ubuntu with python 3.11.
+# 2. install the package with dev dependencies.
+# 3. run pytest, pyright, and ruff; all three must pass.
+
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install package with dev dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: pytest -q
+      - name: Type check
+        run: pyright spin_gnn
+      - name: Lint
+        run: ruff check spin_gnn
