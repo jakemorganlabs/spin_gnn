@@ -94,6 +94,19 @@ def renormalize_axis(u: Tensor, eps: float = EPS) -> Tensor:
     return out
 
 
+def unit_axis_exact(u: Tensor, eps: float = EPS) -> Tensor:
+    assert_vec3(u, "u")
+    # step 1: divide by the true norm, floored only against an exact-zero axis.
+    # unlike normalize this adds no bias inside the norm, so a co-rotating
+    # drive keeps the axis exactly equivariant: R u / ||R u|| = R (u / ||u||).
+    n = u.norm(dim=-1).clamp(min=eps).unsqueeze(-1)
+    out = u / n
+    assert out.shape == u.shape
+    gap = (out.norm(dim=-1) - 1.0).abs()
+    assert bool((gap <= _few_ulps(u.dtype) * 4).all()), "axis must land on the unit sphere"
+    return out
+
+
 def clamp_speed(omega: Tensor, omega_max: float = OMEGA_MAX) -> Tensor:
     assert omega_max > 0, "omega_max must be positive"
     # step 1: fold the speed into the closed interval.

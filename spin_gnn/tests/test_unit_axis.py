@@ -8,9 +8,14 @@ import torch
 from hypothesis import given
 from hypothesis import strategies as st
 
+from spin_gnn.constants import SEED
 from spin_gnn.geometry.box import normalize, safe_norm
 from spin_gnn.geometry.spin import renormalize_axis
+from spin_gnn.layers.message import MessageLayer
+from spin_gnn.layers.update import SatelliteUpdate
+from spin_gnn.model.config import SpinGnnConfig
 from spin_gnn.tests.conftest import unit_vectors
+from spin_gnn.tests.test_constellation import make_constellation
 
 F64 = torch.float64
 
@@ -28,6 +33,19 @@ def test_renormalize_axis_makes_norm_three_vector_unit() -> None:
     v = torch.tensor([3.0, 0.0, 0.0], dtype=F64)
     out = renormalize_axis(v)
     assert torch.allclose(safe_norm(out), torch.tensor(1.0, dtype=F64), atol=1e-9)
+
+
+def test_update_axis_output_is_unit_norm(generator: torch.Generator) -> None:
+    # the axis update emits exactly unit axes on a random interior fixture.
+    torch.manual_seed(SEED)
+    config = SpinGnnConfig(n=6, d=16, c=4, d_c=32, d_m=16)
+    layer = MessageLayer(config).double()
+    update = SatelliteUpdate(config).double()
+    c = make_constellation(3, 6, 16, 4, generator, interior=True)
+    out = update(c, layer(c))
+    norms = out.u.norm(dim=-1)
+    gap = (norms - 1.0).abs()
+    assert bool((gap <= 1e-5).all()), f"axis norm off by {float(gap.max())}"
 
 
 # property: a scaled unit vector normalizes to unit and is idempotent.

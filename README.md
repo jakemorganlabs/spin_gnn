@@ -4,9 +4,9 @@ Small SO(3)-equivariant GNN with one controller node and 16 spinning satellites
 in a unit cube. Every symmetry claim is a proposition, proved, and
 property-tested. PyTorch, CPU, under 1M params.
 
-The container, the invariant edge packet, and the math docs are in place. The
-full README, with the claims ledger and the measured numbers, is written in
-session 7.
+The config, encoder, message layer, node updates, and controller pooling are
+in place. The full README, with the claims ledger and the measured numbers, is
+written in session 7.
 
 ## Status
 
@@ -16,7 +16,14 @@ geometry primitives, with property tests and gradcheck.
 Session 2 build: the `Constellation` container with validation and the SO(3)
 action about the controller, the invariant edge packet and controller self
 packet, and the math docs. Prop 1, packet invariance, is property-tested under
-Haar rotations. Claim C1 is verified; C2 through C11 are pending.
+Haar rotations. Claim C1 is verified.
+
+Session 3 build: the frozen `SpinGnnConfig` with per-update flags, the
+`IdentityEncoder`, the message layer, the gated satellite and controller
+updates, and controller pooling. Prop 2, message equivariance, is
+property-tested under Haar rotations, along with per-update equivariance, the
+identical-tensor flag rule, and the position step bound at init. Claims C2 and
+the session-3 half of C3 advance; C4 through C11 remain pending.
 
 ## Verify
 
