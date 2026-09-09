@@ -57,3 +57,13 @@ ROLLOUT_STEPS: int = 4  # steps; task E free-flight horizon
 NOISE_SIGMA_X: float = 0.05  # box-length units; task A position noise width
 NOISE_SIGMA_OMEGA: float = 0.2  # radians per second; task A speed noise width
 GAP_DRAG_STEPS: int = 20  # points; drag resolution for the symmetry gap curve
+
+# session 6: evaluation and bootstrap constants
+EVAL_EVERY: int = 100  # steps; held-out evaluation cadence inside the training loop
+HELD_OUT_SEED_OFFSET: int = 100000  # index; shifts the held-out draw off the training stream
+BOOTSTRAP_N: int = 10000  # resamples; bootstrap replicates per confidence interval
+CI_LOW: float = 0.025  # fraction; lower bootstrap quantile
+CI_HIGH: float = 0.975  # fraction; upper bootstrap quantile
+PARAM_MATCH_TOL: float = 0.10  # fraction; baseline width matches the full parameter count
+SMOKE_STEPS: int = 20  # steps; the smoke training budget keeps CI under two minutes
+MAX_STEP_BATCHES: int = 8  # batches; interior draws for the post-training step bound
