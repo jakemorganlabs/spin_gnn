@@ -34,6 +34,15 @@ the negative test. Prop 7 closes the phase integrator in closed form, and Prop
 8 separates the Boutin-Kemper homometric pair. Claims C2 through C5, C7, and C8
 are verified; C9 through C11 await training in sessions 5 and 6.
 
+Session 5 build: the synthetic Task B generator constructs every class instead
+of filtering, so the training prior is flat and the generator always returns.
+Uniform sampling collapses the class mix to about 91.5 percent class 0, which
+is why the constructor builds the near ring and the far ring explicitly. Tasks
+A, D, and E sit beside the constructor, the three regularizers ride on a
+`LossBreakdown`, and the plots render the constellation, one panel per layer,
+and the symmetry-gap curve as the dragged satellite and its partner reach
+opposite walls.
+
 ## Verify
 
 ```bash
