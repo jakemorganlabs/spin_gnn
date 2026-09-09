@@ -43,6 +43,16 @@ A, D, and E sit beside the constructor, the three regularizers ride on a
 and the symmetry-gap curve as the dragged satellite and its partner reach
 opposite walls.
 
+Session 6 build: the DeepSets baseline reads the fourteen scalar packet columns,
+means over the off-diagonal edges, and matches the full parameter count within
+ten percent. The training loop draws every batch from the constructed Task B
+generator, evaluates a fixed held-out set every `EVAL_EVERY` steps, and records
+the first step at which held-out accuracy reaches the milestone. The ablation
+runs full, static, scalar-only, and baseline over the seed list, writes each run
+to `results/task_b.json`, and folds the seeds into bootstrap intervals and a
+paired full-versus-scalar-only difference in steps to milestone. The full run
+is in progress; the numbers land in this file in session 7.
+
 ## Verify
 
 ```bash
