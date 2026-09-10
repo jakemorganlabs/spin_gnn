@@ -8,7 +8,7 @@ proposition, proved, and property-tested.
 
 ## Status
 
-2026-09-10, session 8 on the local branch, 181 tests, `pytest -q` passes. The
+2026-09-10, session 8 on the local branch, 182 tests, `pytest -q` passes. The
 `full` configuration has 818979 parameters; the count is measured by
 `scripts/readme_numbers.py` once session 9 publishes.
 

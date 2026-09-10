@@ -47,6 +47,7 @@ Every number lives in `spin_gnn/constants.py`. The ones this spec uses:
 | `N_RBF_COS` | 32 | gaussian grid over the axis alignment in [-1, 1] |
 | `N_RBF_CONTROLLER`, `RBF_CONTROLLER_MAX` | 16, 0.9 | gaussian grid over the controller distance |
 | `SOFTMAX_AGG_INIT` | 1.0 | starting inverse temperature of the softmax aggregators |
+| `H_C_INIT_STD` | 1.0 | spread of the learned controller seed at init |
 | `LR`, `WARMUP_STEPS`, `LR_MIN_FRAC`, `GRAD_CLIP` | 1e-3, 200, 0.05, 1.0 | the training schedule |
 | `SEED` | 0 | master seed |
 

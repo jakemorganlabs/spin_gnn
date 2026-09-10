@@ -61,6 +61,13 @@ maps and the property tests cover them.
 7. A cached, bitwise-deterministic Task B stream per seed under
    `results/cache/`, shared by the four runs of that seed.
 8. `clamp_speed` keeps the sign.
+9. The controller seed starts at unit scale. The first canonical run hit
+   0.962 held-out at step 100 and then spiked to loss 1.7 at peak learning
+   rate; per-module gradient norms put the spike on the 0.02-scale seed
+   and the first controller update, because the layer norm that reads the
+   seed multiplies gradients by one over its spread. At unit scale the
+   worst gradient norm over 250 steps fell from 140 to 29 and the loss
+   reached 0.017 by step 250 on the 4000-step schedule.
 
 ## Next session (9): measure and publish
 

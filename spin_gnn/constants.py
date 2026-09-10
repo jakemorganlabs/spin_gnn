@@ -80,3 +80,4 @@ GRAD_CLIP: float = 1.0  # norm; global gradient-norm ceiling per optimizer step
 EVAL_CHUNK: int = 500  # examples; held-out forward chunk so the packet fits in memory
 CACHE_DIR: str = "results/cache"  # path; cached Task B streams live here, relative to the repo
 SOFTMAX_AGG_INIT: float = 1.0  # inverse temperature; softmax aggregator starts as a soft mean
+H_C_INIT_STD: float = 1.0  # scale; unit-scale controller seed keeps the layer norm Jacobian O(1)

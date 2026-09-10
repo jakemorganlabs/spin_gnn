@@ -9,7 +9,7 @@
 import torch
 from torch import nn
 
-from spin_gnn.constants import N_RBF_CONTROLLER, OMEGA_MAX, RBF_CONTROLLER_MAX
+from spin_gnn.constants import H_C_INIT_STD, N_RBF_CONTROLLER, OMEGA_MAX, RBF_CONTROLLER_MAX
 from spin_gnn.constellation import assert_valid
 from spin_gnn.geometry.basis import gaussian_rbf
 from spin_gnn.model.config import SpinGnnConfig
@@ -22,9 +22,13 @@ class IdentityEncoder(nn.Module):
     def __init__(self, config: SpinGnnConfig) -> None:
         super().__init__()
         self.config: SpinGnnConfig = config
-        # step 1: the scalar lifter and the learned controller seed.
+        # step 1: the scalar lifter and the learned controller seed. the seed
+        # starts at unit scale: a layer norm reads it in the first controller
+        # update, and the norm's Jacobian scales as one over the input spread,
+        # so a 0.02-scale seed multiplied every gradient into it by about 50
+        # and produced loss spikes at peak learning rate (session 8 measurement).
         self.scalar_proj: nn.Linear = nn.Linear(N_ENCODER_SCALARS + N_RBF_CONTROLLER, config.d)
-        self.h_c_param: nn.Parameter = nn.Parameter(torch.randn(config.d_c) * 0.02)
+        self.h_c_param: nn.Parameter = nn.Parameter(torch.randn(config.d_c) * H_C_INIT_STD)
 
     def forward(self, raw: Constellation) -> Constellation:
         # step 1: require a valid raw constellation before any lifting.

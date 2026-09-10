@@ -16,8 +16,9 @@ import torch
 from hypothesis import given
 from hypothesis import strategies as st
 
-from spin_gnn.constants import LR_MIN_FRAC, OMEGA_MAX, SEED, WARMUP_STEPS
+from spin_gnn.constants import H_C_INIT_STD, LR_MIN_FRAC, OMEGA_MAX, SEED, WARMUP_STEPS
 from spin_gnn.constellation import rotate_about_controller
+from spin_gnn.encode.identity_encoder import IdentityEncoder
 from spin_gnn.geometry.basis import gaussian_rbf
 from spin_gnn.geometry.frames import random_rotation
 from spin_gnn.geometry.spin import clamp_speed
@@ -140,3 +141,12 @@ def test_stream_matches_uncached_draw_and_reloads(tmp_path) -> None:
     assert shorter.path == stream.path
     assert len(shorter) == 2
     assert torch.equal(shorter[1][0].x, stream[1][0].x)
+
+
+def test_controller_seed_starts_at_unit_scale() -> None:
+    # a layer norm reads the seed in the first controller update; its
+    # Jacobian scales as one over the seed spread, so the spread must be O(1).
+    torch.manual_seed(SEED)
+    encoder = IdentityEncoder(SpinGnnConfig())
+    spread = float(encoder.h_c_param.std())
+    assert 0.5 * H_C_INIT_STD <= spread <= 1.5 * H_C_INIT_STD
