@@ -4,8 +4,9 @@ Small SO(3)-equivariant GNN with one controller node and 16 spinning satellites
 in a unit cube. Every symmetry claim is a proposition, proved, and
 property-tested. PyTorch, CPU, under 1M params.
 
-The model, readout, predicates, and diagnostics are in place. The full README,
-with the claims ledger and the measured numbers, is written in session 7.
+The model, readout, predicates, diagnostics, the Task B training loop, the
+DeepSets baseline, and the seeded ablation are in place. Sessions 1 through 6
+are built and measured; session 7 closes the claims ledger from `results/`.
 
 ## Status
 
@@ -50,8 +51,28 @@ generator, evaluates a fixed held-out set every `EVAL_EVERY` steps, and records
 the first step at which held-out accuracy reaches the milestone. The ablation
 runs full, static, scalar-only, and baseline over the seed list, writes each run
 to `results/task_b.json`, and folds the seeds into bootstrap intervals and a
-paired full-versus-scalar-only difference in steps to milestone. The full run
-is in progress; the numbers land in this file in session 7.
+paired full-versus-scalar-only difference in steps to milestone. The measured
+numbers are in `results/`.
+
+Session 6 result: the four configurations trained on constructed Task B over
+five seeds, four thousand steps each, on CPU. The width-matched DeepSets
+baseline beats every Spin_GNN variant on held-out accuracy and is the only
+configuration that reaches the 0.90 milestone.
+
+| run | params | heldout mean | heldout 95% CI | steps to 0.90 mean | steps to 0.90 95% CI | missing | sec per step |
+|---|---|---|---|---|---|---|---|
+| full | 526495 | 0.7502 | [0.7470, 0.7534] | null | null | 5 | 0.5277 |
+| static | 526495 | 0.7570 | [0.7495, 0.7645] | null | null | 5 | 0.3641 |
+| scalar_only | 526495 | 0.7494 | [0.7461, 0.7522] | null | null | 5 | 0.3572 |
+| baseline | 526800 | 0.9202 | [0.9067, 0.9286] | 3925.0 | [3775.0, 4000.0] | 1 | 0.2050 |
+
+The paired full-minus-scalar-only difference in steps to milestone is null:
+neither run reaches the milestone on any seed, so no seed pairs. Every full run
+ends with `within_bound_after` False: training pushed the per-layer position
+step past the Prop 3 bound, while static and scalar-only stayed within it. The
+three model variants are statistically indistinguishable from each other; the
+scalar packet alone carries more Task B signal than the equivariant stack
+extracts in this budget.
 
 ## Verify
 
@@ -61,6 +82,19 @@ pytest -q
 pyright spin_gnn
 ruff check spin_gnn
 ```
+
+## Limitations
+
+The equivariant model loses to its own DeepSets baseline on the task it was
+built to learn. On constructed Task B over five seeds the baseline reaches 0.920
+held-out accuracy while the full model stalls near 0.750, and no model run
+reaches the 0.90 milestone inside four thousand steps. The step bound proved at
+initialization does not survive training: every full run ends with
+`within_bound_after` False, so Prop 3 holds at init but not after optimization.
+The claim that geometry updates move steps to milestone against the scalar-only
+ablation is not supported here; neither side reaches the milestone, so the
+paired difference is null. These are measured numbers, not aspirations, and they
+bound what the project currently claims.
 
 ## Layout
 
