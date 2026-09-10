@@ -2,16 +2,19 @@
 # spec: docs/SPEC.md. every geometric update sits behind a config flag, and while
 # a flag is False the matching field leaves as the identical tensor.
 # flow:
-# 1. scalar update: h always runs, reading h, the messages, and invariant scalars.
-# 2. vector update: a gate on h scales the equivariant mean message.
+# 1. scalar update: h always runs, reading a layer-normed h, the messages, the
+#    per-channel invariants of the vector state (PaiNN, Schütt et al. 2021),
+#    and the invariant scalars.
+# 2. vector update: a gate on h scales the equivariant message after channel
+#    mixing; channel mixing acts on the c axis and commutes with R on the 3 axis.
 # 3. size, axis, speed, phase, position: one private method each, bounded per SPEC.
-# 4. controller update: h_c reads h_c, the mean controller message, and the pool.
+# 4. controller update: h_c reads a layer-normed h_c, the controller message, and the pool.
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
-from spin_gnn.constants import DT, OMEGA_MAX
+from spin_gnn.constants import DT, EPS, OMEGA_MAX
 from spin_gnn.constellation import assert_valid
 from spin_gnn.geometry.box import project_to_box
 from spin_gnn.geometry.spin import (
@@ -25,12 +28,36 @@ from spin_gnn.layers.message import Messages, make_mlp
 from spin_gnn.model.config import SpinGnnConfig
 from spin_gnn.types import Constellation
 
+# the count of plain invariant scalars phi_h reads beside h, m_i, and the
+# vector invariants: ||M||_F, s, log s, omega / OMEGA_MAX, sin phi, cos phi, d_iC.
+N_H_SCALARS: int = 7
+
 
 def _frobenius(m: Tensor) -> Tensor:
     # step 1: ||M||_F over the (3, c) axes; a norm of co-rotating channels,
     # so the scalar is invariant even though M is equivariant.
     assert m.shape[-2] == 3, f"vector message must end in (3, c), got {tuple(m.shape)}"
-    return torch.sqrt((m * m).sum(dim=(-1, -2)))
+    return torch.sqrt((m * m).sum(dim=(-1, -2)) + EPS)
+
+
+def _channel_norm(m: Tensor) -> Tensor:
+    # step 1: the norm of each channel vector over the 3 axis; invariant per channel.
+    assert m.shape[-2] == 3, f"vector state must end in (3, c), got {tuple(m.shape)}"
+    return torch.sqrt((m * m).sum(dim=-2) + EPS)
+
+
+def _channel_dot(a: Tensor, b: Tensor) -> Tensor:
+    # step 1: the inner product of matching channel vectors; <R a, R b> = <a, b>.
+    assert a.shape == b.shape and a.shape[-2] == 3
+    return (a * b).sum(dim=-2)
+
+
+def _mix_channels(m: Tensor, weight: Tensor) -> Tensor:
+    # step 1: a linear map on the channel axis only: (B, N, 3, c_in) -> (B, N, 3, c_out).
+    # R acts on the 3 axis and the weight on the c axis, so the two commute.
+    assert m.shape[-2] == 3
+    assert weight.shape[1] == m.shape[-1], "channel weight must match the channel count"
+    return m @ weight.transpose(0, 1)
 
 
 class SatelliteUpdate(nn.Module):
@@ -40,8 +67,13 @@ class SatelliteUpdate(nn.Module):
         d, ch, d_m = config.d, config.c, config.d_m
         # step 1: one network per field; phi_x and phi_axis keep the step bound
         # provable at init through the small final layer.
-        self.phi_h: nn.Sequential = make_mlp(d + d_m + 5, d, d)
+        self.norm_h: nn.LayerNorm = nn.LayerNorm(d)
+        # the PaiNN pair (U, W) reads two channel mixes of V into invariants.
+        self.v_mix: nn.Linear = nn.Linear(ch, 2 * ch, bias=False)
+        self.phi_h: nn.Sequential = make_mlp(d + d_m + 4 * ch + N_H_SCALARS, d, d)
         self.gate_v: nn.Linear = nn.Linear(d, ch)
+        self.v_self: nn.Linear = nn.Linear(ch, ch, bias=False)
+        self.v_msg: nn.Linear = nn.Linear(ch, ch, bias=False)
         self.phi_s: nn.Sequential = make_mlp(d, d, 1)
         self.phi_axis: nn.Sequential = make_mlp(d, d, 1)
         self.phi_omega: nn.Sequential = make_mlp(d, d, 1)
@@ -56,11 +88,13 @@ class SatelliteUpdate(nn.Module):
         assert msg.big_m_i.shape[:2] == (b, n), "messages must match the constellation"
 
         # step 2: the scalar update always runs; the rest follow their flags.
+        # the geometric gates read the normed new h so their inputs stay O(1).
         h = self._update_h(c, msg)
-        v = self._update_v(c, h, msg)
-        s = self._update_size(c, h)
-        u = self._update_axis(c, h, msg)
-        omega = self._update_speed(c, h)
+        h_n = self.norm_h(h)
+        v = self._update_v(c, h_n, msg)
+        s = self._update_size(c, h_n)
+        u = self._update_axis(c, h_n, msg)
+        omega = self._update_speed(c, h_n)
         phi = self._update_phase(c)
         x = self._update_position(c, msg)
 
@@ -72,51 +106,67 @@ class SatelliteUpdate(nn.Module):
         return out
 
     def _update_h(self, c: Constellation, msg: Messages) -> Tensor:
-        # step 1: h reads only invariants, so the new h is invariant too.
+        # step 1: h reads only invariants, so the new h is invariant too. the
+        # vector invariants are per-channel norms and inner products of
+        # co-rotating channel vectors: ||U V||_c, <U V, W V>_c, ||M||_c, <V, M>_c.
+        ch = self.config.c
+        mixed = _mix_channels(c.v, self.v_mix.weight)  # (B, N, 3, 2c)
+        u_v, w_v = mixed[..., :ch], mixed[..., ch:]
+        dist_c = (c.x - c.x_c.unsqueeze(1)).norm(dim=-1)
         feats = torch.cat(
             (
-                c.h,
+                self.norm_h(c.h),
                 msg.m_i,
+                _channel_norm(u_v),
+                _channel_dot(u_v, w_v),
+                _channel_norm(msg.big_m_i),
+                _channel_dot(c.v, msg.big_m_i),
                 _frobenius(msg.big_m_i).unsqueeze(-1),
                 c.s.unsqueeze(-1),
+                torch.log(c.s).unsqueeze(-1),
                 (c.omega / OMEGA_MAX).unsqueeze(-1),
                 torch.sin(c.phi).unsqueeze(-1),
                 torch.cos(c.phi).unsqueeze(-1),
+                dist_c.unsqueeze(-1),
             ),
             dim=-1,
         )
         return c.h + self.phi_h(feats)
 
-    def _update_v(self, c: Constellation, h: Tensor, msg: Messages) -> Tensor:
+    def _update_v(self, c: Constellation, h_n: Tensor, msg: Messages) -> Tensor:
         # step 1: while the flag is False the identical tensor leaves.
         if not self.config.use_vectors:
             return c.v
-        # step 2: an invariant gate scales each equivariant channel, so the
-        # result stays equivariant.
-        gate = torch.sigmoid(self.gate_v(h))
-        return c.v + gate.unsqueeze(-2) * msg.big_m_i
+        # step 2: an invariant gate scales each equivariant channel of the
+        # channel-mixed message plus a channel-mixed self term, so the
+        # result stays equivariant (the PaiNN gated equivariant block).
+        gate = torch.sigmoid(self.gate_v(h_n))
+        drive = _mix_channels(msg.big_m_i, self.v_msg.weight) + _mix_channels(
+            c.v, self.v_self.weight
+        )
+        return c.v + gate.unsqueeze(-2) * drive
 
-    def _update_size(self, c: Constellation, h: Tensor) -> Tensor:
+    def _update_size(self, c: Constellation, h_n: Tensor) -> Tensor:
         if not self.config.update_size:
             return c.s
         # step 1: move in unconstrained space, then fold back into the legal range.
-        raw = F.softplus(softplus_inv(c.s) + self.phi_s(h).squeeze(-1))
+        raw = F.softplus(softplus_inv(c.s) + self.phi_s(h_n).squeeze(-1))
         return clamp_size(raw)
 
-    def _update_axis(self, c: Constellation, h: Tensor, msg: Messages) -> Tensor:
+    def _update_axis(self, c: Constellation, h_n: Tensor, msg: Messages) -> Tensor:
         if not self.config.update_axis:
             return c.u
         # step 1: the drive is a co-rotating vector scaled by a bounded invariant.
         # the floating scale steadies the drive magnitude well above the float
         # noise floor so exact renormalization keeps u equivariant to 1e-8.
-        bounded = torch.tanh(self.phi_axis(h).squeeze(-1))
+        bounded = torch.tanh(self.phi_axis(h_n).squeeze(-1))
         drive = (msg.big_m_i.sum(dim=-1)) * (4.0 * bounded).unsqueeze(-1)
         return unit_axis_exact(c.u + drive)
 
-    def _update_speed(self, c: Constellation, h: Tensor) -> Tensor:
+    def _update_speed(self, c: Constellation, h_n: Tensor) -> Tensor:
         if not self.config.update_speed:
             return c.omega
-        return clamp_speed(c.omega + self.phi_omega(h).squeeze(-1))
+        return clamp_speed(c.omega + self.phi_omega(h_n).squeeze(-1))
 
     def _update_phase(self, c: Constellation) -> Tensor:
         # step 1: with the phase learning on but the speed frozen, the exact
@@ -149,8 +199,9 @@ class ControllerUpdate(nn.Module):
     def __init__(self, config: SpinGnnConfig) -> None:
         super().__init__()
         self.config: SpinGnnConfig = config
-        # step 1: the controller reads its state, the mean message, and the pool.
+        # step 1: the controller reads its normed state, the message, and the pool.
         width = config.d_c + config.d_m + 3 * config.d + 3
+        self.norm_c: nn.LayerNorm = nn.LayerNorm(config.d_c)
         self.phi_c: nn.Sequential = make_mlp(width, config.d_c, config.d_c)
 
     def forward(self, h_c: Tensor, m_c: Tensor, pool: Tensor) -> Tensor:
@@ -160,4 +211,4 @@ class ControllerUpdate(nn.Module):
         assert pool.shape[-1] == 3 * d + 3, (
             f"pool width must be {3 * d + 3}, got {pool.shape[-1]}"
         )
-        return h_c + self.phi_c(torch.cat((h_c, m_c, pool), dim=-1))
+        return h_c + self.phi_c(torch.cat((self.norm_c(h_c), m_c, pool), dim=-1))

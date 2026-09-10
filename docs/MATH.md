@@ -2,7 +2,7 @@
 
 Each proposition has a Statement, a Proof, and a Test line. Tests that
 arrive in later sessions are listed with their future path and read
-`pending`. Claims C1 through C11 live in CLAIMS.md.
+`pending`. Claims C1 through C13 live in CLAIMS.md.
 
 ## 1. Definitions
 
@@ -66,7 +66,7 @@ measured by `diagnostics.measure_max_step`, not assumed.
 Test: `spin_gnn/tests/test_invariance.py::test_model_invariant_outputs_under_haar`
 and `spin_gnn/tests/test_equivariance.py::test_model_equivariant_fields_on_interior`.
 Status: verified.
-Post-training step bound, seed 0: max_step 0.2328, within_bound False.
+Post-training step bound, seed 0, session 6 model: max_step 0.2328, within_bound False. The session 8 re-measurement is recorded in results/task_b.json under max_step_after.
 
 ## 5. Prop 4: what the box breaks
 
@@ -121,6 +121,70 @@ constructions of Pozdnyakov et al. would also serve; the line pair is
 chosen because it needs no numeric search.
 Test: `spin_gnn/tests/test_expressivity.py::test_model_separates_the_homometric_pair`.
 Status: verified. This is a lower bound, not a characterization.
+
+## 9b. Prop 9: aggregation, basis expansion, and channel mixing keep the symmetry
+
+Statement. Let e_ij be the invariant packet of Prop 1 and M_ij the
+equivariant edge message of Prop 2. Then each of the following is invariant
+(scalars) or equivariant (vectors) under rho_R:
+
+1. `rbf(e_ij[k]; lo, hi, K)` for any packet column k.
+2. `max_j m_ij`, `mean_j m_ij`, `sum_j a_ij m_ij` with
+   `a_ij = softmax_j(w . m_ij)`, and the per-channel softmax aggregator
+   `sum_j softmax_j(beta (.) m_ij) (.) m_ij` for any learned beta, over
+   the N neighbors of i or over every satellite edge at the controller.
+3. `sum_j a_ij M_ij` and `mean_j M_ij`.
+4. `V W` for any c by c matrix W acting on the channel axis of V.
+5. `||V||_c`, `<U V, W V>_c`, `<V, M>_c`, and `||M||_F`.
+6. `LN(h)` for a layer norm over the scalar width.
+
+Proof. (1) A function of an invariant scalar is an invariant scalar; the
+gaussian grid is a fixed function of one column. (2) m_ij = phi_m(f_ij) is
+a function of invariants, so it is invariant per edge; the neighbor set of
+i is the same set before and after rotation because rho_R relabels
+nothing, so any permutation-symmetric reduction over j (mean, max) is
+invariant, and the softmax weights a_ij are functions of invariants, so
+the weighted sum is too. (3) Each M_ij transforms by R and each a_ij is
+fixed, so `sum_j a_ij R M_ij = R sum_j a_ij M_ij`; the mean is the case
+a_ij = 1/N. (4) R acts on the 3 axis and W on the channel axis, so
+`R (V W) = (R V) W` by associativity of the two matrix products on
+different axes. (5) Each entry is an inner product or a norm of
+co-rotating channel vectors, `<R a, R b> = <a, b>`. (6) LN reads only h,
+which is invariant.
+Consequence. Prop 3 survives the session 8 layer: every new map either
+composes invariants or is a linear combination of equivariant vectors with
+invariant coefficients.
+Test: `spin_gnn/tests/test_message.py::test_message_equivariance`,
+`spin_gnn/tests/test_update.py::test_update_equivariance`,
+`spin_gnn/tests/test_equivariance.py::test_model_equivariant_fields_on_interior`,
+`spin_gnn/tests/test_basis.py`. Status: verified.
+
+Why these maps. The Task B label asks two questions the mean cannot answer
+well: does any one of the N(N-1)/2 pairs align past TAU_U, and how many
+satellites sit inside TAU_D. A mean over N neighbors carries one aligned
+edge at weight 1/N, so the signal shrinks with N; max and attention carry
+it at weight up to 1 (Corso et al. 2020, principal neighbourhood
+aggregation; Xu et al. 2019 on what sum, mean, and max can distinguish).
+The hard max passes gradient through one edge per channel, so it cannot
+discover which edge feature to key on; the softmax aggregator with a
+learned inverse temperature (Li et al. 2020, DeeperGCN) is the mean at
+beta = 0 and the max as beta grows, with dense gradients throughout. The
+controller also pools every satellite edge directly, so an edge signal
+reaches the readout in one hop instead of two means. The raw edge
+features are pooled by max and mean before any mixing: class 3 axes are
+greedily packed with every pair below 0.9, while class 2 carries one
+pair at exactly 1, so `max_ij rbf(alpha_ij)` at the center 1 reads 1.0
+against at most exp(-1.18) = 0.31, a gap one linear weight can use from
+the first step; a max over MLP outputs would first have to find the
+column through the argmax edge. Measured on 100 constructed examples per
+class (seed 123): the largest `abs(alpha_ij)` per example is at most 0.900
+in class 3 and at least 0.960 in every other class, with class 2 at
+exactly 1.000.
+The gaussian grids let one linear layer read a threshold on d_ij or
+alpha_ij as a bump (Schütt et al. 2017). The channel mixes and the vector
+invariants are the gated equivariant block of PaiNN (Schütt, Unke, and
+Gastegger 2021), which is what lets the vector state speak back to the
+scalar state through more than one norm.
 
 ## 10. Complexity
 

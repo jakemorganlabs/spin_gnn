@@ -6,3 +6,4 @@ __pycache__/
 .ruff_cache/
 .pyright/
 .DS_Store
+results/cache/

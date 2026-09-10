@@ -98,7 +98,9 @@ class ContinuousHead(nn.Module):
         super().__init__()
         assert d_c >= 1 and k_out >= 1, "head widths must be positive"
         self.k_out: int = k_out
-        self.net: nn.Sequential = make_mlp(d_c, d_c, k_out)
+        # step 1: a layer norm in front keeps the head input O(1) after the
+        # residual stack; h_c is invariant, so the normed h_c is too.
+        self.net: nn.Sequential = nn.Sequential(nn.LayerNorm(d_c), *make_mlp(d_c, d_c, k_out))
 
     def forward(self, h_c: Tensor) -> Tensor:
         y = self.net(h_c)
@@ -112,7 +114,9 @@ class DiscreteHead(nn.Module):
         super().__init__()
         assert d_c >= 1 and k_classes >= 1, "head widths must be positive"
         self.k_classes: int = k_classes
-        self.net: nn.Sequential = make_mlp(d_c, d_c, k_classes)
+        self.net: nn.Sequential = nn.Sequential(
+            nn.LayerNorm(d_c), *make_mlp(d_c, d_c, k_classes)
+        )
 
     def forward(self, h_c: Tensor) -> Tensor:
         z = self.net(h_c)

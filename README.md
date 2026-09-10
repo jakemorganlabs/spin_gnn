@@ -8,8 +8,9 @@ proposition, proved, and property-tested.
 
 ## Status
 
-2026-09-09, the `main` branch, 172 tests, `pytest -q` passes. The `full`
-configuration has 526495 parameters.
+2026-09-10, session 8 on the local branch, 181 tests, `pytest -q` passes. The
+`full` configuration has 818979 parameters; the count is measured by
+`scripts/readme_numbers.py` once session 9 publishes.
 
 ## What this is
 
@@ -34,6 +35,24 @@ equivariant and set-function work.
 | 6 | parity of omega is undeclared under reflections | docs only | out of scope |
 | 7 | phase update is the exact constant-speed flow | test_phase_wrap.py::test_closed_form | verified |
 | 8 | scalar path separates a distance-degenerate pair | test_expressivity.py | verified |
+
+## Session 8: the model fix
+
+Session 7 measured the equivariant model at 0.7502 on Task B against
+0.9202 for the width-matched DeepSets baseline. A per-class confusion
+matrix showed the model separating classes 0 and 1 inside 150 steps and
+never separating class 2 from class 3, which differ by one aligned axis
+pair among 120 edges. Mean aggregation carries that edge at weight 1/16.
+Session 8 adds gaussian grids over the distance and alignment columns
+(SchNet), max and softmax-attention aggregation beside the mean at the
+satellites and at the controller (principal neighbourhood aggregation),
+the PaiNN gated equivariant block with channel mixing and per-channel
+vector invariants, layer norm on every scalar MLP input, one forward per
+step, warmup plus cosine learning-rate decay with gradient clipping, and
+a cached deterministic Task B stream per seed. Prop 9 in `docs/MATH.md`
+proves the new maps keep the symmetry, and `test_basis.py` covers them.
+The plan for the next sessions is in `docs/PLAN.md`. The table below is
+the session 7 measurement; session 9 re-measures it.
 
 ## Task B ablation
 
@@ -109,11 +128,11 @@ breaks for a generic rotation once a satellite touches a wall.
 
 ![Symmetry gap](results/figures/symmetry_gap.png)
 
-*The symmetry gap as one satellite is dragged from the interior out to a wall.
-While both satellites stay off the walls the model output is invariant and the
-gap is zero; as the dragged satellite reaches its wall the projection fires and
-the gap grows toward about 0.7. This is the measured boundary of the Prop 4
-claim.*
+*The symmetry gap as six satellites are dragged from the interior out to the
+six wall centers. While they stay off the walls the model output is invariant
+and the gap sits at the float floor; as they reach the walls the projection
+fires and the gap climbs. This is the measured boundary of the Prop 4 claim;
+the figure is redrawn by the ablation.*
 
 ## Limitations
 
@@ -132,8 +151,7 @@ python -m spin_gnn.train.ablate --smoke
 
 ## Citations
 
-The plan names thirteen references from `docs/MATH.md`, but that list is not in
-the repository; only the works below are cited inline in the code and docs.
+The works below are cited inline in the code and docs.
 
 1. M. Boutin and G. Kemper, On reconstructing n-point configurations from the
    distribution of distances or areas, Advances in Applied Mathematics, 2004.
@@ -143,5 +161,26 @@ the repository; only the works below are cited inline in the code and docs.
    noted as an alternative Prop 8 witness.
 3. M. Zaheer, S. Kottur, S. Ravanbakhsh, B. Poczos, R. Salakhutdinov, and
    A. Smola, Deep Sets, 2017. The width-matched baseline in the Task B ablation.
+4. K. T. Schütt, P.-J. Kindermans, H. E. Sauceda, S. Chmiela, A. Tkatchenko,
+   and K.-R. Müller, SchNet: a continuous-filter convolutional neural network
+   for modeling quantum interactions, 2017. The gaussian grid over distances.
+5. G. Corso, L. Cavalleri, D. Beaini, P. Liò, and P. Veličković, Principal
+   Neighbourhood Aggregation for Graph Nets, 2020. Mean, max, and attention
+   side by side as aggregators.
+6. K. Xu, W. Hu, J. Leskovec, and S. Jegelka, How Powerful are Graph Neural
+   Networks?, 2019. What mean and max can and cannot distinguish.
+7. K. T. Schütt, O. T. Unke, and M. Gastegger, Equivariant message passing
+   for the prediction of tensorial properties and molecular spectra, 2021.
+   The PaiNN gated equivariant block and the vector invariants.
+8. P. Thölke and G. De Fabritiis, Equivariant Transformers for Neural
+   Network based Molecular Potentials, 2022. Invariant attention weights
+   over equivariant messages.
+9. J. L. Ba, J. R. Kiros, and G. E. Hinton, Layer Normalization, 2016.
+10. I. Loshchilov and F. Hutter, SGDR: Stochastic Gradient Descent with Warm
+    Restarts, 2017, and Decoupled Weight Decay Regularization, 2019. The
+    cosine schedule and AdamW.
+11. G. Li, C. Xiong, A. Thabet, and B. Ghanem, DeeperGCN: All You Need to
+    Train Deeper GCNs, 2020. The softmax aggregator with a learned
+    temperature.
 
 [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)

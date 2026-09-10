@@ -32,7 +32,7 @@ SEED: int = 0  # index; master seed so every experiment reproduces exactly
 W_UNIT: float = 0.1  # loss weight; pulls axes back to unit length
 W_BOX: float = 0.1  # loss weight; pushes positions back inside the box
 W_SPIN: float = 0.01  # loss weight; keeps speeds below the ceiling
-LR: float = 3e-4  # inverse steps; Adam learning rate
+LR: float = 1e-3  # inverse steps; AdamW peak learning rate, reached after WARMUP_STEPS
 WEIGHT_DECAY: float = 1e-4  # dimensionless; Adam L2 pull
 BATCH_SIZE: int = 64  # examples; per optimization step
 TRAIN_STEPS: int = 4000  # steps; total optimization budget
@@ -59,7 +59,7 @@ NOISE_SIGMA_OMEGA: float = 0.2  # radians per second; task A speed noise width
 GAP_DRAG_STEPS: int = 20  # points; drag resolution for the symmetry gap curve
 
 # session 6: evaluation and bootstrap constants
-EVAL_EVERY: int = 100  # steps; held-out evaluation cadence inside the training loop
+EVAL_EVERY: int = 50  # steps; held-out cadence, fine enough to place a milestone near step 200
 HELD_OUT_SEED_OFFSET: int = 100000  # index; shifts the held-out draw off the training stream
 BOOTSTRAP_N: int = 10000  # resamples; bootstrap replicates per confidence interval
 CI_LOW: float = 0.025  # fraction; lower bootstrap quantile
@@ -67,3 +67,16 @@ CI_HIGH: float = 0.975  # fraction; upper bootstrap quantile
 PARAM_MATCH_TOL: float = 0.10  # fraction; baseline width matches the full parameter count
 SMOKE_STEPS: int = 20  # steps; the smoke training budget keeps CI under two minutes
 MAX_STEP_BATCHES: int = 8  # batches; interior draws for the post-training step bound
+
+# session 8: basis expansion, aggregation, and training schedule constants
+N_RBF_DIST: int = 24  # count; gaussian centers over the pair distance column
+RBF_DIST_MAX: float = 1.75  # box-length units; just above the cube diagonal sqrt(3)
+N_RBF_COS: int = 32  # count; alignment grid on [-1, 1], width 0.065 resolves TAU_U
+N_RBF_CONTROLLER: int = 16  # count; gaussian centers over the controller distance
+RBF_CONTROLLER_MAX: float = 0.9  # box-length units; just above the center-to-corner distance
+WARMUP_STEPS: int = 200  # steps; linear learning-rate warmup before the cosine decay
+LR_MIN_FRAC: float = 0.05  # fraction; the cosine schedule floor as a fraction of LR
+GRAD_CLIP: float = 1.0  # norm; global gradient-norm ceiling per optimizer step
+EVAL_CHUNK: int = 500  # examples; held-out forward chunk so the packet fits in memory
+CACHE_DIR: str = "results/cache"  # path; cached Task B streams live here, relative to the repo
+SOFTMAX_AGG_INIT: float = 1.0  # inverse temperature; softmax aggregator starts as a soft mean

@@ -26,6 +26,15 @@ from spin_gnn.model.spin_gnn_gnn import SpinGnn, SpinGnnLayer  # noqa: E402
 from spin_gnn.train.tasks_synthetic import sample_interior  # noqa: E402
 from spin_gnn.types import Constellation  # noqa: E402
 
+_WALL_DIRECTIONS: tuple[tuple[float, float, float], ...] = (
+    (1.0, 0.0, 0.0),
+    (-1.0, 0.0, 0.0),
+    (0.0, 1.0, 0.0),
+    (0.0, -1.0, 0.0),
+    (0.0, 0.0, 1.0),
+    (0.0, 0.0, -1.0),
+)
+
 
 def _enlarge_position_step(model: SpinGnn) -> None:
     # step 1: the near-zero init hides the clipping effect; set the final layer
@@ -136,20 +145,20 @@ def symmetry_gap_series(
     c = sample_interior(1, config, generator, dtype=torch.float64)
     rotation = random_rotation(1, generator)
 
-    # step 2: drag satellite 0 from the interior radius out to radius 0.5 along
-    # +x, and satellite 1 the matched radius along -x. at the start both are
-    # interior so the step stays translationally covariant; at the end the two
-    # satellites reach opposite walls and their inflated steps clip two faces.
+    # step 2: drag satellites 0 to 5 from the interior radius out to radius 0.5
+    # along +x, -x, +y, -y, +z, -z. at the start all six are interior so the
+    # step stays translationally covariant; at the end they reach the six wall
+    # centers and their inflated steps clip the six faces, the same layout the
+    # equivariance test uses, so the clip fires regardless of the init draw.
+    assert config.n >= len(_WALL_DIRECTIONS), "the series needs at least six satellites"
     radii = torch.linspace(R_INTERIOR, 0.5, GAP_DRAG_STEPS, dtype=torch.float64)
     gaps: list[float] = []
     for radius in radii:
         x_new = c.x.clone()
-        x_new[0, 0] = c.x_c[0] + torch.tensor(
-            [float(radius), 0.0, 0.0], dtype=torch.float64
-        )
-        x_new[0, 1] = c.x_c[0] + torch.tensor(
-            [-float(radius), 0.0, 0.0], dtype=torch.float64
-        )
+        for k, direction in enumerate(_WALL_DIRECTIONS):
+            x_new[0, k] = c.x_c[0] + float(radius) * torch.tensor(
+                direction, dtype=torch.float64
+            )
         dragged = Constellation(
             x=x_new, s=c.s, u=c.u, phi=c.phi, omega=c.omega,
             h=c.h, v=c.v, x_c=c.x_c, h_c=c.h_c,

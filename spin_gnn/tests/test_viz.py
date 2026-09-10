@@ -53,13 +53,14 @@ def test_plot_layers_writes_n_layers_plus_1_panels(
 
 
 def test_plot_symmetry_gap_curve_crosses_the_wall(tmp_path) -> None:
-    # the n=8 small config with the antipodal drag starts at the float floor
-    # and ends past the no-symmetry floor; the seed fixes the draw.
+    # the n=8 small config with the six-wall drag starts at the float floor
+    # and ends past the break floor (1e-4, four orders above the float floor,
+    # matching test_equivariance); the seed fixes the draw.
     config = _small_config()
     generator = torch.Generator().manual_seed(0)
     gaps = symmetry_gap_series(build_model(config), config, generator)
     assert gaps[0] < 1e-6
-    assert gaps[-1] > 1e-3
+    assert gaps[-1] > 1e-4
     out = plot_symmetry_gap(
         build_model(config), config, torch.Generator().manual_seed(0), tmp_path / "gap.png"
     )

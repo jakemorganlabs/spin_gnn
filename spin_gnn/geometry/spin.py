@@ -109,9 +109,10 @@ def unit_axis_exact(u: Tensor, eps: float = EPS) -> Tensor:
 
 def clamp_speed(omega: Tensor, omega_max: float = OMEGA_MAX) -> Tensor:
     assert omega_max > 0, "omega_max must be positive"
-    # step 1: fold the speed into the closed interval.
-    out = torch.clamp(omega, 0.0, omega_max)
-    assert bool(((out >= 0) & (out <= omega_max)).all()), "speed must lie in range"
+    # step 1: fold the signed speed into the closed interval [-omega_max, omega_max]
+    # per SPEC; the sign is the spin direction and the clip must keep it.
+    out = torch.clamp(omega, -omega_max, omega_max)
+    assert bool(((out >= -omega_max) & (out <= omega_max)).all()), "speed must lie in range"
     return out
 
 
