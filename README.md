@@ -52,10 +52,47 @@ is undefined. It does not show that geometry updates help, hurt, or leave the
 steps to milestone unchanged, because neither side produced a milestone to
 compare. The milestone count is 16 missing of 20 seeded runs.
 
-One panel per constructed class lives at `results/figures/class_0.png`,
-`results/figures/class_1.png`, `results/figures/class_2.png`, and
-`results/figures/class_3.png`. The per-layer message magnitudes are at
-`results/figures/layers.png`.
+### The four constructed classes
+
+Each panel is one unit cube with the controller at its center and sixteen
+satellites, drawn as axis lines colored and sized by spin speed. The labeler
+applies its rules in a fixed order: fewer than three near satellites means
+class 0; otherwise mean spin speed below the threshold means class 1; otherwise
+at least one aligned axis pair means class 2; anything left is class 3.
+
+![Class 0](results/figures/class_0.png)
+
+*Class 0: sparse near the controller. Two or fewer satellites sit near the
+center, so the rest scatter across the cube. Under uniform sampling about 0.915
+of draws land here, which is the imbalance the constructor is built to break.*
+
+![Class 1](results/figures/class_1.png)
+
+*Class 1: near but slow spinning. Three or more satellites sit near the
+controller and the mean spin speed stays under the threshold. Uniform sampling
+almost never produces it: its frequency is 0.0.*
+
+![Class 2](results/figures/class_2.png)
+
+*Class 2: near, fast, and aligned. Three or more near satellites spin fast and
+at least one pair of axes is nearly parallel. Aligned axes are rare by chance,
+so this class is also near-absent under uniform draws.*
+
+![Class 3](results/figures/class_3.png)
+
+*Class 3: near, fast, and unaligned. Three or more near satellites spin fast
+with every axis pointing a different way. The constructor packs sixteen
+non-aligned axes to reach it; uniform sampling never does.*
+
+The constellation as the layers see it, one 3D panel per layer boundary from
+the encoder output through layer 4:
+
+![Constellation state at each layer boundary](results/figures/layers.png)
+
+*Five panels, encoder output then layers 1 through 4, each drawing one
+constellation with satellites colored by phase phi. The satellites hold their
+relative positions as the layers pass, which is the geometric state the
+equivariant stack preserves while the scalar path reads the Task B signal.*
 
 ## Class frequencies under uniform sampling
 
@@ -68,9 +105,15 @@ near ring and the far ring explicitly to give Task B a flat prior.
 
 Prop 4 says the box projection commutes only with isometries that map the cube
 to itself, so the model is exactly equivariant under the 24 cube rotations and
-breaks for a generic rotation once a satellite touches a wall. The gap curve at
-`results/figures/symmetry_gap.png` shows the equivariance error grow as the
-dragged satellite and its partner reach opposite walls.
+breaks for a generic rotation once a satellite touches a wall.
+
+![Symmetry gap](results/figures/symmetry_gap.png)
+
+*The symmetry gap as one satellite is dragged from the interior out to a wall.
+While both satellites stay off the walls the model output is invariant and the
+gap is zero; as the dragged satellite reaches its wall the projection fires and
+the gap grows toward about 0.7. This is the measured boundary of the Prop 4
+claim.*
 
 ## Limitations
 
