@@ -109,3 +109,5 @@ bound what the project currently claims.
 - `spin_gnn/tests/` holds the example and property tests.
 - `docs/SPEC.md` is the layer spec. `docs/MATH.md` holds the propositions and
   proofs. `docs/CLAIMS.md` is the claims ledger.
+
+  [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
