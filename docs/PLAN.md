@@ -64,10 +64,15 @@ maps and the property tests cover them.
 
 ## Next session (9): measure and publish
 
-1. Run `python -m spin_gnn.train.ablate --seeds 5 --steps 4000 --out results`
-   on the VPS (about 6 hours on 4 CPU cores; run it under tmux or nohup).
-   If it is already running or done when the session opens, read
-   `results/task_b.json` first.
+1. Session 8 launched the canonical run on the VPS at the end of its work:
+   `python -m spin_gnn.train.ablate --seeds 5 --steps 4000 --out results/session8`
+   under `setsid nohup`, log at `logs/ablation_session8.log` (both paths
+   are ignored by git until promoted). It writes `results/session8/task_b.json`
+   after every run and the summary plus figures at the end; expect about
+   9 hours on 4 CPU cores. Check `pgrep -af spin_gnn.train.ablate` and the
+   log first. When it has finished, move `results/session8/*` over
+   `results/` and commit; if it died, restart the same command, the cached
+   stream under `results/cache/` makes the restart cheap.
 2. Regenerate the README table from `results/summary.md` and the numbers
    from `scripts/readme_numbers.py`; update `docs/CLAIMS.md` rows C9 and
    C10 from the measured mean and the paired interval; the readme test
