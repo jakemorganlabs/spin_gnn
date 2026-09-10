@@ -66,6 +66,7 @@ measured by `diagnostics.measure_max_step`, not assumed.
 Test: `spin_gnn/tests/test_invariance.py::test_model_invariant_outputs_under_haar`
 and `spin_gnn/tests/test_equivariance.py::test_model_equivariant_fields_on_interior`.
 Status: verified.
+Post-training step bound, seed 0: max_step 0.2328, within_bound False.
 
 ## 5. Prop 4: what the box breaks
 
@@ -125,7 +126,7 @@ Status: verified. This is a lower bound, not a characterization.
 
 Per layer: O(N^2 (d_e d_m + d_m c)) time, O(B N^2 d_m) memory, where d_e
 is the packet width 14 + 2 d and d_m is the message width.
-Measured wall-clock: `__AFTER_TRAINING__`.
+Measured wall-clock: 0.5277 seconds per step for the full configuration.
 
 ## 11. Limitations
 

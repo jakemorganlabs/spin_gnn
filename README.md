@@ -1,63 +1,41 @@
-# spin_gnn
+# Spin_GNN
 
-Small SO(3)-equivariant GNN with one controller node and 16 spinning satellites
-in a unit cube. Every symmetry claim is a proposition, proved, and
-property-tested. PyTorch, CPU, under 1M params.
+The weights are small on purpose. The foundation is the work.
 
-The model, readout, predicates, diagnostics, the Task B training loop, the
-DeepSets baseline, and the seeded ablation are in place. Sessions 1 through 6
-are built and measured; session 7 closes the claims ledger from `results/`.
+A small SO(3)-equivariant graph network with one controller node and sixteen
+spinning satellites in a unit cube, with every symmetry claim stated as a
+proposition, proved, and property-tested.
 
 ## Status
 
-Session 1 build: repository scaffold, constants, and the box, frame, and spin
-geometry primitives, with property tests and gradcheck.
+2026-09-09, the `main` branch, 172 tests, `pytest -q` passes. The `full`
+configuration has 526495 parameters.
 
-Session 2 build: the `Constellation` container with validation and the SO(3)
-action about the controller, the invariant edge packet and controller self
-packet, and the math docs. Prop 1, packet invariance, is property-tested under
-Haar rotations. Claim C1 is verified.
+## What this is
 
-Session 3 build: the frozen `SpinGnnConfig` with per-update flags, the
-`IdentityEncoder`, the message layer, the gated satellite and controller
-updates, and controller pooling. Prop 2, message equivariance, is
-property-tested under Haar rotations, along with per-update equivariance, the
-identical-tensor flag rule, and the position step bound at init. Claims C2 and
-the session-3 half of C3 advance; C4 through C11 remain pending.
+One controller node sits at the center of a unit cube and sixteen satellites
+spin around it, each carrying a position, an axis, a phase, and a spin speed.
+Four equivariant message-passing layers move invariant scalars and equivariant
+vectors between the satellites and the controller. A set of predicates reads
+the rigid state and feeds nothing back into the loss. The composition claim is
+that stacking invariant packets with equivariant messages keeps the whole model
+SO(3)-equivariant on the interior; every component is inherited from the cited
+equivariant and set-function work.
 
-Session 4 build: `SpinGnnLayer` composes message pass, satellite update,
-controller pool, and controller update; `SpinGnn` stacks `n_layers` of them
-with no weight sharing and reads out through a continuous and a discrete head.
-The predicate set returns booleans and counts under `no_grad`. Prop 3 invariance
-and equivariance hold on the interior; Prop 4 is exact for all 24 cube
-rotations everywhere and fails for a generic rotation at the walls, which is
-the negative test. Prop 7 closes the phase integrator in closed form, and Prop
-8 separates the Boutin-Kemper homometric pair. Claims C2 through C5, C7, and C8
-are verified; C9 through C11 await training in sessions 5 and 6.
+## Propositions
 
-Session 5 build: the synthetic Task B generator constructs every class instead
-of filtering, so the training prior is flat and the generator always returns.
-Uniform sampling collapses the class mix to about 91.5 percent class 0, which
-is why the constructor builds the near ring and the far ring explicitly. Tasks
-A, D, and E sit beside the constructor, the three regularizers ride on a
-`LossBreakdown`, and the plots render the constellation, one panel per layer,
-and the symmetry-gap curve as the dragged satellite and its partner reach
-opposite walls.
+| Prop | Claim | Test | Status |
+|---|---|---|---|
+| 1 | packet is SO(3)-invariant about the controller | test_invariance.py::test_packet_invariant | verified |
+| 2 | message is SO(3)-equivariant | test_message.py | verified |
+| 3 | full model is SO(3)-equivariant on the interior U | test_invariance.py, test_equivariance.py, diagnostics | verified at init |
+| 4 | full model is exactly O-equivariant everywhere | test_equivariance.py | verified |
+| 5 | phi is a scalar, not a geometric spin, in v0 | docs only | docs only |
+| 6 | parity of omega is undeclared under reflections | docs only | out of scope |
+| 7 | phase update is the exact constant-speed flow | test_phase_wrap.py::test_closed_form | verified |
+| 8 | scalar path separates a distance-degenerate pair | test_expressivity.py | verified |
 
-Session 6 build: the DeepSets baseline reads the fourteen scalar packet columns,
-means over the off-diagonal edges, and matches the full parameter count within
-ten percent. The training loop draws every batch from the constructed Task B
-generator, evaluates a fixed held-out set every `EVAL_EVERY` steps, and records
-the first step at which held-out accuracy reaches the milestone. The ablation
-runs full, static, scalar-only, and baseline over the seed list, writes each run
-to `results/task_b.json`, and folds the seeds into bootstrap intervals and a
-paired full-versus-scalar-only difference in steps to milestone. The measured
-numbers are in `results/`.
-
-Session 6 result: the four configurations trained on constructed Task B over
-five seeds, four thousand steps each, on CPU. The width-matched DeepSets
-baseline beats every Spin_GNN variant on held-out accuracy and is the only
-configuration that reaches the 0.90 milestone.
+## Task B ablation
 
 | run | params | heldout mean | heldout 95% CI | steps to 0.90 mean | steps to 0.90 95% CI | missing | sec per step |
 |---|---|---|---|---|---|---|---|
@@ -66,48 +44,61 @@ configuration that reaches the 0.90 milestone.
 | scalar_only | 526495 | 0.7494 | [0.7461, 0.7522] | null | null | 5 | 0.3572 |
 | baseline | 526800 | 0.9202 | [0.9067, 0.9286] | 3925.0 | [3775.0, 4000.0] | 1 | 0.2050 |
 
-The paired full-minus-scalar-only difference in steps to milestone is null:
-neither run reaches the milestone on any seed, so no seed pairs. Every full run
-ends with `within_bound_after` False: training pushed the per-layer position
-step past the Prop 3 bound, while static and scalar-only stayed within it. The
-three model variants are statistically indistinguishable from each other; the
-scalar packet alone carries more Task B signal than the equivariant stack
-extracts in this budget.
+paired steps-to-milestone difference (full - scalar_only): no paired seeds reached the milestone.
 
-## Verify
+The paired interval does not exist: no full or scalar-only run reached the 0.90
+milestone on any seed, so no seed pairs and the difference in steps to milestone
+is undefined. It does not show that geometry updates help, hurt, or leave the
+steps to milestone unchanged, because neither side produced a milestone to
+compare. The milestone count is 16 missing of 20 seeded runs.
+
+One panel per constructed class lives at `results/figures/class_0.png`,
+`results/figures/class_1.png`, `results/figures/class_2.png`, and
+`results/figures/class_3.png`. The per-layer message magnitudes are at
+`results/figures/layers.png`.
+
+## Class frequencies under uniform sampling
+
+Uniform sampling places 0.91525 of draws in class 0, 0.0 in class 1, 0.08475 in
+class 2, and 0.0 in class 3. The constructed generator is the dataset because
+the uniform draw never produces classes 1 and 3, so the constructor builds the
+near ring and the far ring explicitly to give Task B a flat prior.
+
+## Where symmetry stops
+
+Prop 4 says the box projection commutes only with isometries that map the cube
+to itself, so the model is exactly equivariant under the 24 cube rotations and
+breaks for a generic rotation once a satellite touches a wall. The gap curve at
+`results/figures/symmetry_gap.png` shows the equivariance error grow as the
+dragged satellite and its partner reach opposite walls.
+
+## Limitations
+
+phi is a scalar, not a geometric spin. Reflections are untested. Task B is a set
+function, so the ablation measures efficiency, not necessity. The ablation runs
+on CPU only. N is fixed at 16.
+
+## Run
 
 ```bash
 pip install -e ".[dev]"
 pytest -q
-pyright spin_gnn
-ruff check spin_gnn
+python -m spin_gnn.train.ablate --seeds 5 --steps 4000 --out results
+python -m spin_gnn.train.ablate --smoke
 ```
 
-## Limitations
+## Citations
 
-The equivariant model loses to its own DeepSets baseline on the task it was
-built to learn. On constructed Task B over five seeds the baseline reaches 0.920
-held-out accuracy while the full model stalls near 0.750, and no model run
-reaches the 0.90 milestone inside four thousand steps. The step bound proved at
-initialization does not survive training: every full run ends with
-`within_bound_after` False, so Prop 3 holds at init but not after optimization.
-The claim that geometry updates move steps to milestone against the scalar-only
-ablation is not supported here; neither side reaches the milestone, so the
-paired difference is null. These are measured numbers, not aspirations, and they
-bound what the project currently claims.
+The plan names thirteen references from `docs/MATH.md`, but that list is not in
+the repository; only the works below are cited inline in the code and docs.
 
-## Layout
+1. M. Boutin and G. Kemper, On reconstructing n-point configurations from the
+   distribution of distances or areas, Advances in Applied Mathematics, 2004.
+   The homometric line pair that witnesses Prop 8.
+2. A. Pozdnyakov et al., Incompleteness of graph neural networks for points
+   clouds in three dimensions, 2020. Three-dimensional homometric constructions
+   noted as an alternative Prop 8 witness.
+3. M. Zaheer, S. Kottur, S. Ravanbakhsh, B. Poczos, R. Salakhutdinov, and
+   A. Smola, Deep Sets, 2017. The width-matched baseline in the Task B ablation.
 
-- `spin_gnn/constants.py` holds every numeric constant.
-- `spin_gnn/types.py` holds the `Constellation` dataclass and the tagged
-  validation outcomes.
-- `spin_gnn/constellation.py` validates, rotates, and measures constellations.
-- `spin_gnn/geometry/` holds the box, frame, spin, and invariant primitives.
-- `spin_gnn/model/` holds the config, the readout heads, the predicates, the
-  stacked model, and the diagnostics.
-- `spin_gnn/data/` holds the constructed degenerate pairs.
-- `spin_gnn/tests/` holds the example and property tests.
-- `docs/SPEC.md` is the layer spec. `docs/MATH.md` holds the propositions and
-  proofs. `docs/CLAIMS.md` is the claims ledger.
-
-  [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)
+[![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/)

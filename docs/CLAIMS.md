@@ -1,7 +1,7 @@
 # CLAIMS: the ledger
 
 Every claim the project makes, where it is proved or measured, and its
-status. A row starts as `pending` and dies as `refuted`. A row closes
+status. A row opens unresolved and dies as `refuted`. A row closes
 only when its test or script passes in CI.
 
 | id | claim | where proved or measured | test or script | status |
@@ -14,9 +14,9 @@ only when its test or script passes in CI.
 | C6 | phi is a scalar, not a geometric spin, in v0 | Prop 5 | docs only | docs only |
 | C7 | phase update is the exact constant-speed flow | Prop 7 | spin_gnn/tests/test_phase_wrap.py::test_closed_form | verified |
 | C8 | scalar path separates a distance-degenerate pair | Prop 8 | spin_gnn/tests/test_expressivity.py | verified |
-| C9 | Task B held-out accuracy at least 0.95, 5 seeds, CI reported | results | results/task_b.json | pending |
-| C10 | geometry updates change steps-to-0.90 vs scalar-only | results | results/task_b.json | pending |
-| C11 | everything reproduces from one command and one seed | run | spin_gnn/tests/test_determinism.py, spin_gnn/train/ablate.py | pending |
+| C9 | Task B held-out accuracy at least 0.95, 5 seeds, CI reported | results | results/task_b.json | failed; measured 0.7502 |
+| C10 | geometry updates change steps to 0.90 versus the scalar-only model (vector state removed, vector-derived scalars kept) | results | results/task_b.json | not shown; no paired seeds reached the milestone, interval undefined |
+| C11 | everything reproduces from one command and one seed | run | spin_gnn/tests/test_determinism.py, spin_gnn/train/ablate.py | verified |
 
 ## How a row closes
 
