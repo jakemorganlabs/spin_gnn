@@ -86,9 +86,12 @@ maps and the property tests cover them.
    enforces both.
 3. Re-measure the post-training step bound (`max_step_after`) and record it
    in MATH.md under Prop 3.
-4. If C9 still fails, the next levers in order: widen `D_MESSAGE` to 128,
-   raise `N_RBF_COS` to 32, add a second attention head, train 8000 steps.
-   Change one thing per run and keep the seed-0 confusion matrix in the log.
+4. If C9 still fails, the next levers in order: lower the peak `LR` to
+   5e-4 (seed 2 of the session 8 run dipped from 0.934 to 0.892 held-out
+   as the rate reached 1e-3, with a batch-loss spike to 1.34, while seeds
+   0 and 1 did not), widen `D_MESSAGE` to 128, add a second attention
+   head, train 8000 steps. Change one thing per run and keep the seed-0
+   confusion matrix in the log.
 
 ## Session 10: the geometric updates must earn their place
 
