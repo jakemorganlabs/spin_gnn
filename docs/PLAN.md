@@ -14,7 +14,7 @@ closes by updating it. The end goal sits at the bottom and does not move.
 | 5 | constructed Task B generator, tasks A, D, E, losses, plots | c876b51 |
 | 6 | training loop, DeepSets baseline, seeded ablation | c872500 |
 | 7 | measured numbers, claims ledger closed, license, figures | 945316d |
-| 8 | the model fix: basis expansion, max and attention aggregation, PaiNN block, layer norm, schedule, cached stream | this branch |
+| 8 | the model fix: basis expansion, multi-aggregation, PaiNN block, layer norm, schedule, cached stream; measured 1.0000 on Task B | fb228da, c088ed2 |
 
 ## What session 7 found
 
@@ -69,31 +69,18 @@ maps and the property tests cover them.
    worst gradient norm over 250 steps fell from 140 to 29 and the loss
    reached 0.017 by step 250 on the 4000-step schedule.
 
-## Next session (9): measure and publish
+## Session 8 also measured and published
 
-1. Session 8 launched the canonical run on the VPS at the end of its work:
-   `python -m spin_gnn.train.ablate --seeds 5 --steps 4000 --out results/session8`
-   under `setsid nohup`, log at `logs/ablation_session8.log` (both paths
-   are ignored by git until promoted). It writes `results/session8/task_b.json`
-   after every run and the summary plus figures at the end; expect about
-   9 hours on 4 CPU cores. Check `pgrep -af spin_gnn.train.ablate` and the
-   log first. When it has finished, move `results/session8/*` over
-   `results/` and commit; if it died, restart the same command, the cached
-   stream under `results/cache/` makes the restart cheap.
-2. Regenerate the README table from `results/summary.md` and the numbers
-   from `scripts/readme_numbers.py`; update `docs/CLAIMS.md` rows C9 and
-   C10 from the measured mean and the paired interval; the readme test
-   enforces both.
-3. Re-measure the post-training step bound (`max_step_after`) and record it
-   in MATH.md under Prop 3.
-4. If C9 still fails, the next levers in order: lower the peak `LR` to
-   5e-4 (seed 2 of the session 8 run dipped from 0.934 to 0.892 held-out
-   as the rate reached 1e-3, with a batch-loss spike to 1.34, while seeds
-   0 and 1 did not), widen `D_MESSAGE` to 128, add a second attention
-   head, train 8000 steps. Change one thing per run and keep the seed-0
-   confusion matrix in the log.
+The canonical run finished on 2026-09-11 after 10 hours 20 minutes on the
+VPS. Every Spin_GNN configuration reached 1.0000 held-out on every seed
+with the milestone between step 100 and step 200; the baseline reached
+0.9554 at about step 2170. C9 closed as verified. C10 stays not shown:
+the paired interval over five seeds is [-50.0, 40.0]. The trained full
+model steps past the Prop 3 bound on every seed (max_step 0.097 to 0.578
+against 0.0375), recorded in MATH.md. The results, summary, and figures
+under `results/` are the session 8 measurement.
 
-## Session 10: the geometric updates must earn their place
+## Next session (9): the geometric updates must earn their place
 
 C10 asks whether the geometric updates change the steps to the milestone.
 Task B is a set function, so the honest test needs a task where moving the
@@ -102,13 +89,16 @@ alignment) already have labelers in `tasks_synthetic.py`. Train the
 continuous head on Task A and the discrete head on D and E with the same
 four-way ablation, and publish the paired intervals.
 
-## Session 11: close the v0 limitations
+## Session 10: close the v0 limitations
 
 1. Prop 5: give phi a transported reference frame so the phase difference
    is geometric; prove and test the new packet columns.
 2. Prop 6: declare the parity of omega and test the model under O_h.
 3. Variable N with padding masks; the aggregators already tolerate it.
 4. A GPU run of the ablation to lift the step budget.
+5. Prop 3 after training: bound the learned position step by construction
+   (a tanh on phi_x scaled to MARGIN / N_LAYERS) so within_bound holds
+   after training, then re-measure max_step_after.
 
 ## End goal
 

@@ -14,8 +14,8 @@ only when its test or script passes in CI.
 | C6 | phi is a scalar, not a geometric spin, in v0 | Prop 5 | docs only | docs only |
 | C7 | phase update is the exact constant-speed flow | Prop 7 | spin_gnn/tests/test_phase_wrap.py::test_closed_form | verified |
 | C8 | scalar path separates a distance-degenerate pair | Prop 8 | spin_gnn/tests/test_expressivity.py | verified |
-| C9 | Task B held-out accuracy at least 0.95, 5 seeds, CI reported | results | results/task_b.json | failed; measured 0.7502 with the session 6 model; session 9 re-measures with the session 8 model |
-| C10 | geometry updates change steps to 0.90 versus the scalar-only model (vector state removed, vector-derived scalars kept) | results | results/task_b.json | not shown; no paired seeds reached the milestone, interval undefined |
+| C9 | Task B held-out accuracy at least 0.95, 5 seeds, CI reported | results | results/task_b.json | verified | session 8 measured 1.0000, CI [1.0000, 1.0000]; session 7 had failed at 0.7502 |
+| C10 | geometry updates change steps to 0.90 versus the scalar-only model (vector state removed, vector-derived scalars kept) | results | results/task_b.json | not shown; paired interval [-50.0, 40.0] over 5 seeds crosses zero |
 | C11 | everything reproduces from one command and one seed | run | spin_gnn/tests/test_determinism.py, spin_gnn/train/ablate.py | verified |
 | C12 | basis expansion, max and attention aggregation, channel mixing, and layer norm keep Props 1 to 3 | Prop 9 | spin_gnn/tests/test_basis.py, test_message.py, test_update.py, test_equivariance.py | verified |
 | C13 | the cached Task B stream is bitwise the uncached draw | stream | spin_gnn/tests/test_basis.py::test_stream_matches_uncached_draw_and_reloads | verified |

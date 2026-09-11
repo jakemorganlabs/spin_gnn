@@ -66,7 +66,15 @@ measured by `diagnostics.measure_max_step`, not assumed.
 Test: `spin_gnn/tests/test_invariance.py::test_model_invariant_outputs_under_haar`
 and `spin_gnn/tests/test_equivariance.py::test_model_equivariant_fields_on_interior`.
 Status: verified.
-Post-training step bound, seed 0, session 6 model: max_step 0.2328, within_bound False. The session 8 re-measurement is recorded in results/task_b.json under max_step_after.
+Post-training step bound (MARGIN / N_LAYERS = 0.0375). Session 6 model,
+seed 0: max_step 0.2328, within_bound False. Session 8 model, full
+configuration over seeds 0 to 4: max_step 0.1346, 0.1048, 0.4534, 0.0970,
+0.5781, within_bound False on every seed; the static and scalar-only
+configurations move no satellite, so their max_step is 0. The trained
+full model therefore holds Prop 3 at init and not after training: once
+the position update has learned a step larger than the margin, a satellite
+can reach a wall inside U and Prop 4 takes over. Closing that gap, by a
+learned step that is bounded by construction, is session 10 work.
 
 ## 5. Prop 4: what the box breaks
 

@@ -8,9 +8,8 @@ proposition, proved, and property-tested.
 
 ## Status
 
-2026-09-10, session 8 on the local branch, 182 tests, `pytest -q` passes. The
-`full` configuration has 818979 parameters; the count is measured by
-`scripts/readme_numbers.py` once session 9 publishes.
+2026-09-11, session 8 on the local branch, 182 tests, `pytest -q` passes. The
+`full` configuration has 818979 parameters.
 
 ## What this is
 
@@ -29,7 +28,7 @@ equivariant and set-function work.
 |---|---|---|---|
 | 1 | packet is SO(3)-invariant about the controller | test_invariance.py::test_packet_invariant | verified |
 | 2 | message is SO(3)-equivariant | test_message.py | verified |
-| 3 | full model is SO(3)-equivariant on the interior U | test_invariance.py, test_equivariance.py, diagnostics | verified at init |
+| 3 | full model is SO(3)-equivariant on the interior U | test_invariance.py, test_equivariance.py, diagnostics | verified at init; the trained full model steps past the bound, see MATH.md |
 | 4 | full model is exactly O-equivariant everywhere | test_equivariance.py | verified |
 | 5 | phi is a scalar, not a geometric spin, in v0 | docs only | docs only |
 | 6 | parity of omega is undeclared under reflections | docs only | out of scope |
@@ -52,24 +51,35 @@ step, warmup plus cosine learning-rate decay with gradient clipping, and
 a cached deterministic Task B stream per seed. Prop 9 in `docs/MATH.md`
 proves the new maps keep the symmetry, and `test_basis.py` covers them.
 The plan for the next sessions is in `docs/PLAN.md`. The table below is
-the session 7 measurement; session 9 re-measures it.
+the session 8 measurement with the rebuilt model.
 
 ## Task B ablation
 
+Five seeds, 4000 steps each, held out set of 2000, evaluated every 50 steps.
+The milestone is the first evaluation at or above 0.90 held-out accuracy.
+
 | run | params | heldout mean | heldout 95% CI | steps to 0.90 mean | steps to 0.90 95% CI | missing | sec per step |
 |---|---|---|---|---|---|---|---|
-| full | 526495 | 0.7502 | [0.7470, 0.7534] | null | null | 5 | 0.5277 |
-| static | 526495 | 0.7570 | [0.7495, 0.7645] | null | null | 5 | 0.3641 |
-| scalar_only | 526495 | 0.7494 | [0.7461, 0.7522] | null | null | 5 | 0.3572 |
-| baseline | 526800 | 0.9202 | [0.9067, 0.9286] | 3925.0 | [3775.0, 4000.0] | 1 | 0.2050 |
+| full | 818979 | 1.0000 | [1.0000, 1.0000] | 160.0 | [130.0, 190.0] | 0 | 0.5130 |
+| static | 818979 | 1.0000 | [1.0000, 1.0000] | 160.0 | [150.0, 180.0] | 0 | 0.4352 |
+| scalar_only | 818979 | 1.0000 | [1.0000, 1.0000] | 160.0 | [150.0, 180.0] | 0 | 0.4345 |
+| baseline | 819789 | 0.9554 | [0.9522, 0.9579] | 2170.0 | [2030.0, 2310.0] | 0 | 0.4297 |
 
-paired steps-to-milestone difference (full - scalar_only): no paired seeds reached the milestone.
+paired steps-to-milestone difference (full - scalar_only) over 5 paired seeds: mean 0.0, 95% CI [-50.0, 40.0].
 
-The paired interval does not exist: no full or scalar-only run reached the 0.90
-milestone on any seed, so no seed pairs and the difference in steps to milestone
-is undefined. It does not show that geometry updates help, hurt, or leave the
-steps to milestone unchanged, because neither side produced a milestone to
-compare. The milestone count is 16 missing of 20 seeded runs.
+Every Spin_GNN configuration reaches a held-out accuracy of 1.0000 on every
+seed, and every one of the fifteen runs reaches the 0.90 milestone between
+step 100 and step 200. The width-matched DeepSets baseline reaches 0.9554 and
+needs about 2170 steps, and its weakest class is class 2 on every seed, the
+class that needs one aligned pair found among 120 edges. Session 7 measured
+the same equivariant model at 0.7502 and the same baseline at 0.9202.
+
+The paired interval crosses zero: on five paired seeds the full model reached
+the milestone at the same evaluation as the scalar-only model, one evaluation
+earlier once, and one evaluation later once. So the geometric updates neither
+speed up nor slow down Task B. That is the expected reading for a set
+function, and it is why the next session moves to tasks D and E, where the
+satellites have to move for the label to be right.
 
 ### The four constructed classes
 
@@ -128,11 +138,11 @@ breaks for a generic rotation once a satellite touches a wall.
 
 ![Symmetry gap](results/figures/symmetry_gap.png)
 
-*The symmetry gap as six satellites are dragged from the interior out to the
-six wall centers. While they stay off the walls the model output is invariant
-and the gap sits at the float floor; as they reach the walls the projection
-fires and the gap climbs. This is the measured boundary of the Prop 4 claim;
-the figure is redrawn by the ablation.*
+*The symmetry gap as six satellites are dragged from the interior radius out
+to the six wall centers, with the position step inflated so the clip is
+visible. The gap starts near 1e-6 and climbs three orders of magnitude as the
+satellites reach the walls and the projection fires. This is the measured
+boundary of the Prop 4 claim; the figure is redrawn by the ablation.*
 
 ## Limitations
 
